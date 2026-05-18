@@ -1,0 +1,26 @@
+model Invoice {
+  id String @id @default(cuid())
+
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  subscriptionId String?       @map("subscription_id")
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+  amount         Decimal
+  currency       String        @default("BDT")
+  status         InvoiceStatus
+  issuedAt       DateTime      @map("issued_at")
+  paidAt         DateTime?     @map("paid_at")
+  paymentMethod  String?       @map("payment_method")
+  transactionId  String?       @map("transaction_id")
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  @@index([tenantId])
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}

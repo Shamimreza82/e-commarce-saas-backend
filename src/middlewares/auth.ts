@@ -1,48 +1,39 @@
+import { StatusCodes } from 'http-status-codes';
+import jwt from 'jsonwebtoken';
 
-// import { RequestHandler } from 'express';
+import { envConfig } from '@/config/env.config';
+import { AppError } from '@/shared/errors/AppError';
+import { catchAsync } from '@/shared/utils/catchAsync';
 
-// import { AppError } from '@/shared/errors/AppError';
-// import { catchAsync } from '@/shared/utils/catchAsync';
+import { AUTH_MESSAGES } from '@/modules/auth/auth.constand';
+import { TJwtPayload } from '@/modules/auth/auth.types';
 
+import type { UserRole } from '@prisma/client';
 
-// export const auth = (...allowedRoles: Role[]): RequestHandler =>
-//   catchAsync(async (req, _res, next) => {
-//     const authHeader = req.headers.authorization;
+export const auth = (...roles: UserRole[]) => {
+  return catchAsync(async (req, _res, next) => {
+    const token = req.cookies?.['token'] || req.headers.authorization?.split(' ')[1];
 
-//     if (!authHeader?.startsWith('Bearer ')) {
-//       throw new AppError(401, 'Unauthorized: Token missing');
-//     }
+    if (!token) {
+      throw new AppError(StatusCodes.UNAUTHORIZED, AUTH_MESSAGES.UNAUTHORIZED);
+    }
 
-//     const token = authHeader.split(' ')[1];
+    try {
+      const decoded = jwt.verify(token, envConfig.jwtAccessSecret) as TJwtPayload;
 
-//     if (!token) {
-//       throw new AppError(401, 'Unauthorized: Invalid token');
-//     }
+      if (roles.length > 0 && !roles.includes(decoded.role)) {
+        throw new AppError(StatusCodes.FORBIDDEN, AUTH_MESSAGES.FORBIDDEN);
+      }
 
-//     const decoded = verifyAccessToken(token);
+      req.user = decoded;
+      req.tenantId = decoded.tenantId;
 
-//     const user = await findUserById(decoded.userId);
-
-//     if (!user) {
-//       throw new AppError(401, 'Unauthorized: User not found');
-//     }
-
-//     assertActiveUser(user.status);
-
-//     req.user = {
-//       userId: user.id,
-//       tenantId: user.tenantId,
-//       role: user.role as Role,
-//     };
-
-//        // ✅ 🔥 SUPER ADMIN BYPASS
-//     if (req.user.role as Role === Role.SUPER_ADMIN) {
-//       return next();
-//     }
-
-//     if (allowedRoles.length && !allowedRoles.includes(req.user.role as Role)) {
-//       throw new AppError(403, 'Forbidden');
-//     }
-
-//     next();
-//   });
+      next();
+    } catch (error) {
+      if (error instanceof jwt.JsonWebTokenError) {
+        throw new AppError(StatusCodes.UNAUTHORIZED, AUTH_MESSAGES.INVALID_TOKEN);
+      }
+      throw error;
+    }
+  });
+};

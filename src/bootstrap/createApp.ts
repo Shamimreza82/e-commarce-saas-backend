@@ -40,7 +40,7 @@ export const createApp = () => {
   app.get('/', (_req, res) => {
     sendResponse(res, 200, {
       success: true,
-      message: 'api work file',
+      message: 'Api Worked',
     });
   });
 

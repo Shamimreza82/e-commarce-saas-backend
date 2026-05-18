@@ -1,0 +1,215 @@
+enum ProductType {
+  PHYSICAL
+  DIGITAL
+  SERVICE
+  SUBSCRIPTION
+}
+
+enum ProductStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+  OUT_OF_STOCK
+}
+
+enum FulfillmentType {
+  SELLER_FULFILLED // Fulfilled by Merchant (FBM)
+  PLATFORM_FULFILLED // Fulfilled by Amazon/Daraj (FBA)
+}
+
+// ==========================================
+// 1. BRAND & CATEGORY MANAGEMENT
+// ==========================================
+model Brand {
+  id          String    @id @default(cuid())
+  tenantId    String    @map("tenant_id")
+  name        String
+  slug        String
+  logoUrl     String?   @map("logo_url")
+  description String?
+  products    Product[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+}
+
+model Category {
+  id       String     @id @default(cuid())
+  tenantId String     @map("tenant_id")
+  tenant   Tenant     @relation(fields: [tenantId], references: [id])
+  name     String
+  slug     String
+  parentId String?    @map("parent_id")
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryTree")
+  products Product[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+}
+
+// ==========================================
+// 2. THE CORE PRODUCT (The "Parent" Listing)
+// ==========================================
+model Product {
+  id         String    @id @default(cuid())
+  tenantId   String    @map("tenant_id")
+  tenant     Tenant    @relation(fields: [tenantId], references: [id])
+  categoryId String?   @map("category_id")
+  category   Category? @relation(fields: [categoryId], references: [id])
+  brandId    String?   @map("brand_id")
+  brand      Brand?    @relation(fields: [brandId], references: [id])
+
+  name        String
+  slug        String
+  description String?       @db.Text
+  type        ProductType   @default(PHYSICAL)
+  status      ProductStatus @default(DRAFT)
+
+  // Amazon-style search and compliance parameters
+  searchKeywords String[] @map("search_keywords")
+  taxCode        String?  @map("tax_code") // e.g., standard tax categories
+  metadata       Json? // Fallback for extreme custom fields per product type
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  images     ProductImage[]
+  variants   ProductVariant[]
+  attributes Attribute[]
+  reviews    ProductReview[]
+  orderItems OrderItem[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@index([name])
+}
+
+// ==========================================
+// 3. ADVANCED VARIATION ENGINE
+// ==========================================
+model Attribute {
+  id        String           @id @default(cuid())
+  tenantId  String           @map("tenant_id")
+  name      String // e.g., "Color", "Size", "Shoe Size", "Storage"
+  productId String?          @map("product_id")
+  product   Product?         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  values    AttributeValue[]
+
+  @@index([tenantId])
+}
+
+model AttributeValue {
+  id          String                  @id @default(cuid())
+  attributeId String                  @map("attribute_id")
+  attribute   Attribute               @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+  value       String // e.g., "Red", "XL", "256GB"
+  meta        Json? // For storing HEX codes (#FF0000) or extra value data
+  variants    VariantAttributeValue[]
+
+  @@index([attributeId])
+}
+
+model VariantAttributeValue {
+  variantId        String         @map("variant_id")
+  variant          ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  attributeValueId String         @map("attribute_value_id")
+  attributeValue   AttributeValue @relation(fields: [attributeValueId], references: [id], onDelete: Cascade)
+
+  @@id([variantId, attributeValueId])
+}
+
+// ==========================================
+// 4. THE PRODUCT VARIANT (The actual buyable SKU)
+// ==========================================
+model ProductVariant {
+  id        String  @id @default(cuid())
+  productId String  @map("product_id")
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  sku     String  @unique
+  barcode String? @unique // UPC, EAN, or ISBN (Crucial for Amazon/Daraj)
+
+  // Pricing matrix
+  price          Decimal  @db.Decimal(10, 2)
+  compareAtPrice Decimal? @map("compare_at_price") @db.Decimal(10, 2) // Original/RRP price
+  costPerItem    Decimal? @map("cost_per_item") @db.Decimal(10, 2) // For profit margin tracking
+
+  // Logistics & Shipping Calculations (Crucial for Daraj/Amazon API)
+  weight Decimal? // In kilograms/pounds
+  length Decimal? // In cm/inches
+  width  Decimal? // In cm/inches
+  height Decimal? // In cm/inches
+
+  fulfillmentType FulfillmentType @default(SELLER_FULFILLED) @map("fulfillment_type")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  attributes      VariantAttributeValue[]
+  inventoryLevels ProductInventory[]
+  orderItems      OrderItem[]
+
+  @@index([productId])
+}
+
+// ==========================================
+// 5. MULTI-WAREHOUSE INVENTORY CONTROL
+// ==========================================
+model Warehouse {
+  id        String             @id @default(cuid())
+  tenantId  String             @map("tenant_id")
+  name      String // e.g., "Dhaka Central Hub", "FBA Warehouse NY"
+  code      String             @unique // e.g., WH-DKA-01
+  address   String?
+  inventory ProductInventory[]
+
+  @@index([tenantId])
+}
+
+model ProductInventory {
+  id          String         @id @default(cuid())
+  variantId   String         @map("variant_id")
+  variant     ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  warehouseId String         @map("warehouse_id")
+  warehouse   Warehouse      @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+
+  // Prevents overselling during high traffic (e.g., 11.11 or Black Friday sales)
+  quantity Int @default(0) // Physical stock present
+  reserved Int @default(0) // Items currently in customer carts/unpaid orders
+
+  @@unique([variantId, warehouseId])
+}
+
+// ==========================================
+// 6. MEDIA & SOCIAL PROOF
+// ==========================================
+model ProductImage {
+  id        String   @id @default(cuid())
+  tenantId  String   @map("tenant_id")
+  productId String   @map("product_id")
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  key       String?
+  alt       String?
+  position  Int      @default(0)
+  isPrimary Boolean  @default(false) @map("is_primary")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([productId])
+}
+
+model ProductReview {
+  id         String   @id @default(cuid())
+  productId  String   @map("product_id")
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  customerId String   @map("customer_id") // Relates to your User/Customer model
+  rating     Int // 1 to 5 stars
+  title      String?
+  comment    String?  @db.Text
+  isVerified Boolean  @default(false) @map("is_verified_purchase")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([productId])
+}

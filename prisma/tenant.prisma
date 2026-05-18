@@ -1,0 +1,85 @@
+model Tenant {
+  id String @id @default(cuid())
+
+  name String
+  slug String @unique
+
+  description String?
+  logoUrl     String? @map("logo_url")
+  bannerUrl   String? @map("banner_url")
+
+  // Contact Info
+  contactEmail String? @map("contact_email")
+  contactPhone String? @map("contact_phone")
+  address      String?
+
+  // Settings
+  currency String @default("BDT")
+  timezone String @default("Asia/Dhaka")
+
+  customDomain String? @unique @map("custom_domain")
+
+  status TenantStatus @default(ACTIVE)
+
+  ownerId String? @map("owner_id")
+  owner   User?   @relation("TenantOwner", fields: [ownerId], references: [id])
+
+  subscriptionPlanId String?           @map("subscription_plan_id")
+  subscriptionPlan   SubscriptionPlan? @relation(fields: [subscriptionPlanId], references: [id])
+
+  billingCustomerId String? @map("billing_customer_id")
+
+  trialEndsAt DateTime? @map("trial_ends_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users      User[]     @relation("TenantUsers")
+  products   Product[]
+  categories Category[]
+  orders     Order[]
+
+  subscriptions Subscription[]
+  invoices      Invoice[]
+  storeSettings StoreSettings?
+
+  @@index([slug])
+}
+
+model StoreSettings {
+  id       String @id @default(cuid())
+  tenantId String @unique @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Theme & Branding
+  primaryColor String? @default("#000000") @map("primary_color")
+  fontFamily   String? @default("Geist Sans") @map("font_family")
+
+  // Social Links (JSON)
+  // { "facebook": "", "instagram": "", "twitter": "", "tiktok": "", "youtube": "" }
+  socialLinks Json? @map("social_links")
+
+  // SEO
+  seoTitle       String? @map("seo_title")
+  seoDescription String? @map("seo_description")
+
+  // Features Toggle
+  enableCustomerReviews Boolean @default(true) @map("enable_customer_reviews")
+  enableWishlist        Boolean @default(true) @map("enable_wishlist")
+
+  // Policies
+  refundPolicy   String? @map("refund_policy") @db.Text
+  privacyPolicy  String? @map("privacy_policy") @db.Text
+  termsOfService String? @map("terms_of_service") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  TRIAL
+  PAST_DUE
+  CLOSED
+}

@@ -1,0 +1,56 @@
+model Order {
+  id String @id @default(cuid())
+
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  customerName  String @map("customer_name")
+  customerPhone String @map("customer_phone")
+
+  address String
+
+  subtotal    Decimal
+  deliveryFee Decimal @map("delivery_fee")
+  total       Decimal
+
+  status OrderStatus @default(PENDING)
+
+  paymentStatus PaymentStatus @default(UNPAID) @map("payment_status")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  items OrderItem[]
+
+  @@index([tenantId, status])
+}
+
+model OrderItem {
+  id String @id @default(cuid())
+
+  orderId String @map("order_id")
+  order   Order  @relation(fields: [orderId], references: [id])
+
+  productId String  @map("product_id")
+  product   Product @relation(fields: [productId], references: [id])
+
+  variantId String?         @map("variant_id")
+  variant   ProductVariant? @relation(fields: [variantId], references: [id])
+
+  quantity Int
+  price    Decimal
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  FAILED
+}

@@ -12,17 +12,14 @@ import { multerErrorHandler } from '@/shared/errors/handlers/multer.handler';
 import { handlePrismaError } from '@/shared/errors/handlers/prismaError.handler';
 import { syntaxErrorHandler } from '@/shared/errors/handlers/syntaxError.handler';
 import { handleZodError } from '@/shared/errors/handlers/zodError.handler';
-import { getRequestId, getRequestLogger } from '@/shared/logging/context';
 import { sendError } from '@/shared/utils/sendError';
+import { logger } from '@/bootstrap/logger';
 
 const globalErrorHandler = (err: unknown, req: Request, res: Response, _next: NextFunction) => {
-  const requestLogger = getRequestLogger(req);
-
-  requestLogger.error(
+  logger.error(
     {
       err,
-      requestId: getRequestId(req),
-      userId: req.user?.userId,
+      userId: req.user?.id,
       method: req.method,
       url: req.originalUrl,
       ip: req.ip,

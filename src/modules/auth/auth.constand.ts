@@ -1,0 +1,17 @@
+export const AUTH_MESSAGES = {
+  REGISTRATION_SUCCESS: 'Registration successful. Please verify your email.',
+  LOGIN_SUCCESS: 'Login successful.',
+  LOGOUT_SUCCESS: 'Logged out successfully.',
+  VERIFY_EMAIL_SUCCESS: 'Email verified successfully.',
+  PASSWORD_RESET_LINK_SENT: 'Check your email to reset your password.',
+  PASSWORD_RESET_SUCCESS: 'Your password has been reset successfully. Please login.',
+  PASSWORD_CHANGE_SUCCESS: 'Your password has been changed successfully.',
+  EMAIL_ALREADY_VERIFIED: 'User already verified. Please login.',
+  USER_NOT_FOUND: 'User not found.',
+  INVALID_CREDENTIALS: 'Invalid email or password.',
+  EMAIL_NOT_VERIFIED: 'Please verify your email to login.',
+  UNAUTHORIZED: 'Unauthorized access.',
+  FORBIDDEN: 'Forbidden access.',
+  INVALID_TOKEN: 'Invalid or expired token.',
+  ACCOUNT_INACTIVE: 'Your account is inactive. Please contact support.',
+} as const;

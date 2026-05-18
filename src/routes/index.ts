@@ -1,11 +1,16 @@
 import { Router } from 'express';
 
-import { labTestRoutes } from '@/modules/lab-test/labTest.route';
-import { medicineRoutes } from '@/modules/medicine/medicine.route';
-import { adminRoutes } from '@/modules/admin/admin.route';
+import { AuthRouter } from '@/modules/auth/auth.router';
+import { TenantRouter } from '@/modules/tenant/tenant.router';
+import { ProductRouter } from '@/modules/product/product.router';
+import { CategoryRouter } from '@/modules/category/category.router';
+import { BrandRouter } from '@/modules/brand/brand.router';
 
 export const apiRouter = Router();
 
-apiRouter.use('/lab-tests', labTestRoutes);
-apiRouter.use('/medicines', medicineRoutes);
-apiRouter.use('/admin', adminRoutes);
+apiRouter.use('/auth', AuthRouter);
+apiRouter.use('/tenants', TenantRouter);
+apiRouter.use('/products', ProductRouter);
+apiRouter.use('/categories', CategoryRouter);
+apiRouter.use('/brands', BrandRouter);
+

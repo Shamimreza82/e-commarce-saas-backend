@@ -1,0 +1,40 @@
+model Subscription {
+  id                 String             @id @default(cuid())
+  tenantId           String             @map("tenant_id")
+  tenant             Tenant             @relation(fields: [tenantId], references: [id])
+  planId             String             @map("plan_id")
+  plan               SubscriptionPlan   @relation(fields: [planId], references: [id])
+  status             SubscriptionStatus
+  currentPeriodStart DateTime           @map("current_period_start")
+  currentPeriodEnd   DateTime           @map("current_period_end")
+  cancelAtPeriodEnd  Boolean            @default(false) @map("cancel_at_period_end")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  invoices           Invoice[]
+
+  @@index([tenantId])
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIALING
+  CANCELLED
+  EXPIRED
+  PAST_DUE
+}
+
+model SubscriptionPlan {
+  id              String   @id @default(cuid())
+  name            String
+  monthlyPrice    Decimal  @map("monthly_price")
+  yearlyPrice     Decimal? @map("yearly_price")
+  maxProducts     Int?     @map("max_products")
+  maxOrders       Int?     @map("max_orders")
+  customDomain    Boolean  @default(false) @map("custom_domain")
+  analytics       Boolean  @default(false)
+  aiFeatures      Boolean  @default(false) @map("ai_features")
+  prioritySupport Boolean  @default(false) @map("priority_support")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  tenants       Tenant[]
+  subscriptions Subscription[]
+}

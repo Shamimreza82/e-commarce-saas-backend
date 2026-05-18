@@ -2,7 +2,7 @@ import { appConfig } from '@/config/app.config';
 import { envConfig } from '@/config/env.config';
 
 import { createApp } from './createApp';
-import { errorLogger, logger } from './logger';
+import { logger } from './logger';
 
 import type { Server } from 'node:http';
 
@@ -26,11 +26,10 @@ const shutdown = async (server: Server, signal: string): Promise<void> => {
 export const startServer = (): Server => {
   const app = createApp();
 
-  const server = app.listen(appConfig.port, appConfig.host, () => {
+  const server = app.listen(appConfig.port, () => {
     logger.info(
       {
         event: 'SERVER_START',
-        host: appConfig.host,
         port: appConfig.port,
         environment: envConfig.nodeEnv,
         pid: process.pid,
@@ -43,7 +42,7 @@ export const startServer = (): Server => {
   const handleSignal = (signal: 'SIGINT' | 'SIGTERM'): void => {
     void shutdown(server, signal)
       .catch((error: unknown) => {
-        errorLogger.error({ err: error }, 'Shutdown failed');
+        logger.error({ err: error }, 'Shutdown failed');
       })
       .finally(() => {
         process.exit(0);
@@ -60,12 +59,12 @@ export const startServer = (): Server => {
 
   // TODO: add handlers for uncaught exceptions and unhandled promise rejections
   process.on('uncaughtException', (error) => {
-    errorLogger.fatal({ err: error }, 'Uncaught exception');
+    logger.fatal({ err: error }, 'Uncaught exception');
     process.exit(1);
   });
 
   process.on('unhandledRejection', (reason) => {
-    errorLogger.fatal({ err: reason }, 'Unhandled rejection');
+    logger.fatal({ err: reason }, 'Unhandled rejection');
     process.exit(1);
   });
 

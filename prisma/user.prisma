@@ -1,0 +1,30 @@
+model User {
+  id String @id @default(cuid())
+
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation("TenantUsers", fields: [tenantId], references: [id])
+
+  name            String? @map("name")
+  email           String  @unique
+  phone           String? @unique
+  avatarUrl       String? @map("avatar_url")
+  isActive        Boolean @default(true) @map("is_active")
+  isEmailVerified Boolean @default(false) @map("is_email_verified")
+  password        String
+
+  role UserRole @default(STAFF)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  ownedTenants Tenant[] @relation("TenantOwner")
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  TENANT_ADMIN
+  MANAGER
+  STAFF
+}
